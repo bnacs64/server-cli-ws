@@ -8,7 +8,16 @@
     "cli": "node app.js cli",
     "server": "node app.js server",
     "test": "node scripts/test-controller.js",
+    "test:enhanced": "node scripts/test-enhanced-features.js",
+    "test:discovery": "node scripts/test-enhanced-discovery.js",
+    "test:network": "node scripts/test-network-comprehensive.js",
+    "test:missing": "node scripts/test-missing-functions.js",
     "test:cli": "node app.js cli discover",
+    "discover": "node app.js discover",
+    "discover:verbose": "node app.js discover --verbose",
+    "discover:target": "node app.js discover --target 192.168.2.66,192.168.2.120",
+    "diagnose": "node app.js diagnose",
+    "diagnose:verbose": "node app.js diagnose --verbose",
     "dev": "nodemon app.js server"
   },
   "keywords": [

@@ -14,19 +14,52 @@ async function testNetworkAPI() {
     const api = new ControllerAPI();
 
     try {
-        // 1. Discover controllers first
-        console.log('1. Discovering controllers...');
-        const controllers = await api.discoverControllers(10000);
-        
+        // 1. Enhanced controller discovery
+        console.log('1. Enhanced controller discovery...');
+
+        // Show network information
+        const networkInfo = api.getNetworkInfo();
+        console.log(`   Platform: ${networkInfo.platform}`);
+        console.log(`   Network interfaces: ${networkInfo.interfaces.length}`);
+
+        // Enhanced discovery with retry mechanisms
+        const discoveryOptions = {
+            enableRetry: true,
+            enableUnicastFallback: true,
+            enableInterfaceDetection: true,
+            maxRetries: 3,
+            retryDelay: 1000,
+            exponentialBackoff: true,
+            logLevel: 'info'
+        };
+
+        const controllers = await api.discoverControllers(10000, discoveryOptions);
+
         if (controllers.length === 0) {
-            console.log('❌ No controllers found. Cannot test network API.');
+            console.log('❌ No controllers found with enhanced discovery.');
+            console.log('💡 Running network diagnostics...');
+
+            const diagnostics = await api.runNetworkDiagnostics();
+            console.log(`   Network interfaces: ${diagnostics.networkInterfaces.length}`);
+            console.log(`   Connectivity tests: ${diagnostics.connectivityTests.length}`);
+
+            diagnostics.recommendations.forEach(rec => {
+                const icon = rec.type === 'error' ? '❌' : rec.type === 'warning' ? '⚠️' : 'ℹ️';
+                console.log(`   ${icon} ${rec.message}`);
+            });
+
             return;
         }
 
         const controller = controllers[0];
-        console.log(`✅ Found controller: ${controller.serialNumber}`);
-        console.log(`   IP: ${controller.ip}`);
+        console.log(`✅ Found controller with enhanced discovery: ${controller.serialNumber}`);
+        console.log(`   Configured IP: ${controller.ip}`);
         console.log(`   Response from: ${controller.remoteAddress}`);
+
+        // Show network behavior if different
+        if (controller.ip !== controller.remoteAddress) {
+            console.log(`   ℹ️  Network Behavior: Controller responds from different IP (NAT/routing)`);
+        }
         console.log('');
 
         // 2. Test the network configuration data structure

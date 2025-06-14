@@ -39,19 +39,70 @@ class ControllerTest {
     }
 
     async testDiscovery() {
-        this.log('Testing controller discovery...', 'test');
-        
+        this.log('Testing enhanced controller discovery...', 'test');
+
         try {
-            const controllers = await this.api.discoverControllers(10000);
-            
+            // Show network information first
+            const networkInfo = this.api.getNetworkInfo();
+            this.log(`Platform: ${networkInfo.platform}`, 'info');
+            this.log(`Found ${networkInfo.interfaces.length} network interface(s)`, 'info');
+
+            networkInfo.interfaces.forEach((iface, index) => {
+                this.log(`  ${index + 1}. ${iface.name} (${iface.type}) - ${iface.address}`, 'info');
+            });
+
+            // Enhanced discovery with retry mechanisms
+            const discoveryOptions = {
+                enableRetry: true,
+                enableUnicastFallback: true,
+                enableInterfaceDetection: true,
+                maxRetries: 3,
+                retryDelay: 1000,
+                exponentialBackoff: true,
+                logLevel: 'info'
+            };
+
+            this.log('Starting enhanced discovery with retry mechanisms...', 'info');
+            const controllers = await this.api.discoverControllers(10000, discoveryOptions);
+
             if (controllers.length === 0) {
-                this.addResult('discovery', false, 'No controllers discovered');
-                this.log('No controllers found during discovery', 'error');
+                this.log('No controllers found with enhanced discovery', 'warning');
+
+                // Run network diagnostics for troubleshooting
+                this.log('Running network diagnostics for troubleshooting...', 'info');
+                try {
+                    const diagnostics = await this.api.runNetworkDiagnostics();
+
+                    this.log('Network diagnostic results:', 'info');
+                    this.log(`  Network interfaces: ${diagnostics.networkInterfaces.length}`, 'info');
+                    this.log(`  Connectivity tests: ${diagnostics.connectivityTests.length}`, 'info');
+
+                    diagnostics.connectivityTests.forEach(test => {
+                        if (test.reachable) {
+                            this.log(`    ✅ ${test.targetIP}: Reachable (${test.responseTime}ms)`, 'success');
+                        } else {
+                            this.log(`    ❌ ${test.targetIP}: ${test.error}`, 'warning');
+                        }
+                    });
+
+                    this.log('Recommendations:', 'info');
+                    diagnostics.recommendations.forEach(rec => {
+                        const icon = rec.type === 'error' ? '❌' : rec.type === 'warning' ? '⚠️' : 'ℹ️';
+                        this.log(`  ${icon} ${rec.message}`, 'info');
+                        this.log(`     Action: ${rec.action}`, 'info');
+                    });
+
+                    this.addResult('discovery', false, 'No controllers discovered (diagnostics completed)', diagnostics);
+                } catch (diagError) {
+                    this.log(`Network diagnostics failed: ${diagError.message}`, 'error');
+                    this.addResult('discovery', false, 'No controllers discovered (diagnostics failed)');
+                }
+
                 return null;
             }
 
-            this.log(`Found ${controllers.length} controller(s):`, 'success');
-            
+            this.log(`Found ${controllers.length} controller(s) with enhanced discovery:`, 'success');
+
             controllers.forEach((controller, index) => {
                 this.log(`Controller ${index + 1}:`, 'info');
                 this.log(`  Serial: ${controller.serialNumber}`, 'info');
@@ -60,15 +111,24 @@ class ControllerTest {
                 this.log(`  MAC: ${controller.macAddress}`, 'info');
                 this.log(`  Driver: ${controller.driverVersion}`, 'info');
                 this.log(`  Release: ${controller.driverReleaseDate}`, 'info');
+
+                // Show network behavior if different
+                if (controller.ip !== controller.remoteAddress) {
+                    this.log(`  ℹ️  Network Behavior: Controller responds from different IP (NAT/routing)`, 'info');
+                }
             });
 
             const controller = controllers[0];
-            this.addResult('discovery', true, `Controller found: ${controller.serialNumber}`, controller);
+            this.addResult('discovery', true, `Enhanced discovery successful: ${controller.serialNumber}`, {
+                controller,
+                networkInfo,
+                discoveryOptions
+            });
             return controller;
-            
+
         } catch (error) {
-            this.addResult('discovery', false, `Discovery failed: ${error.message}`);
-            this.log(`Discovery failed: ${error.message}`, 'error');
+            this.addResult('discovery', false, `Enhanced discovery failed: ${error.message}`);
+            this.log(`Enhanced discovery failed: ${error.message}`, 'error');
             return null;
         }
     }
