@@ -240,6 +240,7 @@ class PacketHandler {
                 // Broadcast to common network ranges
                 const broadcastAddresses = [
                     '255.255.255.255',
+                    '192.168.2.255',    // Added for your specific network
                     '192.168.1.255',
                     '192.168.0.255',
                     '10.0.0.255'
