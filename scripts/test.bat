@@ -1,7 +1,10 @@
 @echo off
-echo Controller Management System - CLI Mode
-echo =====================================
+echo Controller Management System - Quick Test
+echo ========================================
 echo.
+
+REM Change to project root directory
+cd /d "%~dp0\.."
 
 REM Check if Node.js is installed
 node --version >nul 2>&1
@@ -12,6 +15,10 @@ if %errorlevel% neq 0 (
     pause
     exit /b 1
 )
+
+echo Node.js found: 
+node --version
+echo.
 
 REM Check if dependencies are installed
 if not exist "node_modules" (
@@ -25,9 +32,11 @@ if not exist "node_modules" (
     echo.
 )
 
-REM Start CLI mode
-echo Starting CLI mode...
+echo Running controller test...
+echo This will safely test all controller functions.
 echo.
-node app.js cli
+node scripts\test-controller.js
 
+echo.
+echo Test completed. Press any key to exit.
 pause

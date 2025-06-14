@@ -17,23 +17,50 @@ A comprehensive Node.js application for managing network-enabled hardware contro
 
 ## Architecture
 
-The application follows a layered architecture:
+The application follows a clean, layered architecture:
 
 ```
-├── src/
-│   ├── core/           # Core Logic Layer
+controller-management-system/
+├── 📄 app.js                    # Main entry point
+├── 📄 package.json              # Dependencies and scripts
+├── 📄 README.md                 # This file
+├── 📄 .gitignore                # Git ignore rules
+├── 📄 run-tests.sh              # Unix test launcher
+├── 📄 main_sdk.txt              # SDK specification
+├── 📄 STRUCTURE.md              # Project structure guide
+│
+├── 📁 src/                      # Source Code
+│   ├── 📁 core/                 # Core Logic Layer
 │   │   ├── controller-api.js    # Main API functions
-│   │   ├── packet-handler.js    # UDP packet handling & BCD utilities
+│   │   ├── packet-handler.js    # UDP & BCD utilities
 │   │   └── config-manager.js    # JSON persistence
-│   ├── cli/            # CLI Interface Layer
+│   ├── 📁 cli/                  # CLI Interface Layer
 │   │   └── index.js             # Command-line interface
-│   └── server/         # Web Service Layer
+│   └── 📁 server/               # Web Service Layer
 │       ├── index.js             # Express server
 │       ├── api-routes.js        # REST API endpoints
 │       └── websocket-handler.js # WebSocket functionality
-├── config/
+│
+├── 📁 scripts/                  # Utility Scripts
+│   ├── test-controller.js       # Main test script
+│   ├── test.bat                 # Windows launcher
+│   ├── start-cli.bat            # Windows CLI launcher
+│   └── start-server.bat         # Windows server launcher
+│
+├── 📁 config/                   # Configuration
 │   └── controllers.json         # Persisted controller data
-└── app.js              # Main entry point
+│
+├── 📁 examples/                 # Usage Examples
+│   ├── api-client-example.js    # HTTP API examples
+│   └── websocket-client-example.js # WebSocket examples
+│
+├── 📁 docs/                     # Documentation
+│   ├── INSTALLATION.md          # Installation guide
+│   ├── TESTING_GUIDE.md         # Testing documentation
+│   └── PROJECT_SUMMARY.md       # Project overview
+│
+└── 📁 logs/                     # Generated Files
+    └── test_results_*.json      # Test results
 ```
 
 ## Installation
@@ -43,6 +70,29 @@ The application follows a layered architecture:
 ```bash
 npm install
 ```
+
+## 🚀 Quick Start
+
+### Testing with Real Controller
+
+**Cross-platform testing (recommended):**
+```bash
+# Safe get-then-set testing approach
+node scripts/test-controller.js
+
+# Windows quick launcher
+scripts\test.bat
+
+# Unix/Linux/macOS launcher
+./run-tests.sh
+```
+
+**Features:**
+- ✅ Discovers controllers automatically
+- ✅ Gets current settings before testing
+- ✅ Sets same values for safe testing
+- ✅ Restores original settings after testing
+- ✅ Cross-platform compatible
 
 ## Usage
 

@@ -18,7 +18,7 @@ npm --version
 
 Navigate to the project directory and install required packages:
 ```bash
-cd c:\Users\rdpadmin\Documents\server
+cd controller-management-system
 npm install
 ```
 
@@ -35,9 +35,16 @@ This will install:
 
 ### 1. Test the Installation
 
-Run the test example to verify everything is working:
+Run the controller test to verify everything is working:
 ```bash
-node test-example.js
+# Cross-platform test script
+node scripts/test-controller.js
+
+# Windows batch file
+scripts\test.bat
+
+# Unix/Linux/macOS
+./run-tests.sh
 ```
 
 ### 2. Start CLI Mode
@@ -49,6 +56,9 @@ node app.js
 # Direct commands
 node app.js cli discover
 node app.js cli list
+
+# Windows batch file
+scripts\start-cli.bat
 ```
 
 ### 3. Start Server Mode
@@ -59,6 +69,9 @@ node app.js server
 
 # Custom port
 node app.js server -p 8080
+
+# Windows batch file
+scripts\start-server.bat
 ```
 
 ### 4. Access the Web Interface
@@ -84,7 +97,7 @@ Add to package.json scripts section:
 {
   "scripts": {
     "dev": "nodemon app.js server",
-    "test": "jest",
+    "test": "node scripts/test-controller.js",
     "test:watch": "jest --watch"
   }
 }
@@ -190,7 +203,7 @@ After installation, verify everything works:
 
 1. **Core functionality**:
    ```bash
-   node test-example.js
+   node scripts/test-controller.js
    ```
 
 2. **CLI mode**:
@@ -211,7 +224,7 @@ After installation, verify everything works:
 
 ## Next Steps
 
-1. Read the [README.md](README.md) for usage instructions
-2. Check [examples/](examples/) for sample code
+1. Read the [README.md](../README.md) for usage instructions
+2. Check [examples/](../examples/) for sample code
 3. Review the API documentation at `/docs`
 4. Test controller discovery and communication

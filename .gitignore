@@ -147,9 +147,8 @@ jspm_packages/
 # ============================================
 
 # Test results and logs
-test_results_*.json
-corrected_test_results_*.json
-controller_test_*.log
+logs/test_results_*.json
+logs/*.log
 *.log
 
 # Configuration backups

@@ -1,7 +1,10 @@
 @echo off
-echo Controller Management System - Server Mode
-echo ==========================================
+echo Controller Management System - CLI Mode
+echo =====================================
 echo.
+
+REM Change to project root directory
+cd /d "%~dp0\.."
 
 REM Check if Node.js is installed
 node --version >nul 2>&1
@@ -25,14 +28,9 @@ if not exist "node_modules" (
     echo.
 )
 
-REM Start server mode
-echo Starting server mode...
-echo Server will be available at: http://localhost:3000
-echo API documentation: http://localhost:3000/docs
-echo Health check: http://localhost:3000/health
+REM Start CLI mode
+echo Starting CLI mode...
 echo.
-echo Press Ctrl+C to stop the server
-echo.
-node app.js server
+node app.js cli
 
 pause

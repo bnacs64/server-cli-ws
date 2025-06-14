@@ -7,8 +7,9 @@
     "start": "node app.js",
     "cli": "node app.js cli",
     "server": "node app.js server",
-    "dev": "nodemon app.js server",
-    "test": "jest"
+    "test": "node scripts/test-controller.js",
+    "test:cli": "node app.js cli discover",
+    "dev": "nodemon app.js server"
   },
   "keywords": [
     "controller",

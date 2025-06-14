@@ -31,54 +31,29 @@ echo ""
 
 # Show menu
 echo "Choose a test to run:"
-echo "1) Quick Test (Direct Communication) - Recommended"
-echo "2) Full Test Suite (Bash script)"
-echo "3) Diagnostic Test (Troubleshoot connection issues)"
-echo "4) Manual Interactive Test"
-echo "5) CLI Discovery Only"
-echo "6) Start API Server for Manual Testing"
-echo "7) Exit"
+echo "1) Controller Test (Safe get-then-set approach) - Recommended"
+echo "2) CLI Discovery Only"
+echo "3) Start API Server for Manual Testing"
+echo "4) Exit"
 echo ""
 
-read -p "Enter your choice (1-7): " choice
+read -p "Enter your choice (1-4): " choice
 
 case $choice in
     1)
         echo ""
-        echo "🚀 Running direct communication test..."
-        echo "This will test all controller functions safely."
+        echo "🚀 Running controller test..."
+        echo "This will safely test all controller functions using get-then-set approach."
         echo ""
-        node test-direct-communication.js
+        node scripts/test-controller.js
         ;;
     2)
-        echo ""
-        echo "🚀 Running full test suite..."
-        echo "This includes CLI tests and API server tests."
-        echo ""
-        chmod +x test-controller.sh
-        ./test-controller.sh
-        ;;
-    3)
-        echo ""
-        echo "🔍 Running diagnostic test..."
-        echo "This will help identify connection issues."
-        echo ""
-        node diagnose-controller.js
-        ;;
-    4)
-        echo ""
-        echo "🎛️  Starting manual interactive test..."
-        echo "This allows you to test different approaches manually."
-        echo ""
-        node manual-controller-test.js
-        ;;
-    5)
         echo ""
         echo "🔍 Running discovery only..."
         echo ""
         node app.js cli discover
         ;;
-    6)
+    3)
         echo ""
         echo "🌐 Starting API server..."
         echo "Server will be available at http://localhost:3000"
@@ -87,7 +62,7 @@ case $choice in
         echo ""
         node app.js server
         ;;
-    7)
+    4)
         echo "👋 Goodbye!"
         exit 0
         ;;
@@ -102,7 +77,6 @@ echo "✅ Test completed!"
 echo ""
 echo "📋 Check the following files for detailed results:"
 echo "   - test_results_*.json (JSON format)"
-echo "   - controller_test_*.log (detailed logs)"
 echo ""
-echo "💡 To enable network configuration test (CAUTION - controller will restart):"
-echo "   ENABLE_NETWORK_TEST=1 node test-direct-communication.js"
+echo "💡 The test safely gets current values then sets the same values for testing."
+echo "   Original settings are automatically restored after testing."

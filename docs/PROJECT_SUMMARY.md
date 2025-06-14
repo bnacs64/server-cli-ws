@@ -11,11 +11,8 @@ controller-management-system/
 ├── 📄 app.js                          # Main entry point
 ├── 📄 package.json                    # Dependencies and scripts
 ├── 📄 README.md                       # Main documentation
-├── 📄 INSTALLATION.md                 # Installation guide
-├── 📄 PROJECT_SUMMARY.md              # This file
-├── 📄 test-example.js                 # Core functionality test
-├── 📄 start-cli.bat                   # Windows CLI launcher
-├── 📄 start-server.bat                # Windows server launcher
+├── 📄 .gitignore                      # Git ignore rules
+├── 📄 run-tests.sh                    # Unix test launcher
 ├── 📄 main_sdk.txt                    # Original SDK specification
 │
 ├── 📁 config/
@@ -35,9 +32,23 @@ controller-management-system/
 │       ├── 📄 api-routes.js           # REST API endpoints
 │       └── 📄 websocket-handler.js    # WebSocket functionality
 │
-└── 📁 examples/
-    ├── 📄 api-client-example.js       # HTTP API usage example
-    └── 📄 websocket-client-example.js # WebSocket usage example
+├── 📁 scripts/
+│   ├── 📄 test-controller.js          # Main test script
+│   ├── 📄 test.bat                    # Windows test launcher
+│   ├── 📄 start-cli.bat               # Windows CLI launcher
+│   └── 📄 start-server.bat            # Windows server launcher
+│
+├── 📁 examples/
+│   ├── 📄 api-client-example.js       # HTTP API usage example
+│   └── 📄 websocket-client-example.js # WebSocket usage example
+│
+├── 📁 docs/
+│   ├── 📄 INSTALLATION.md             # Installation guide
+│   ├── 📄 TESTING_GUIDE.md            # Testing documentation
+│   └── 📄 PROJECT_SUMMARY.md          # This file
+│
+└── 📁 logs/                           # Test results and logs
+    └── 📄 test_results_*.json         # Generated test results
 ```
 
 ## 🚀 Key Features
@@ -57,6 +68,9 @@ controller-management-system/
 - ✅ **Data Persistence**: JSON-based controller storage
 
 ### Advanced Features
+- ✅ **Safe Testing**: Get-then-set-same-values approach
+- ✅ **Auto-restore**: Original settings restored after testing
+- ✅ **Cross-platform**: Windows, macOS, Linux support
 - ✅ **Export/Import**: CSV and JSON data formats
 - ✅ **Error Handling**: Comprehensive error management
 - ✅ **Security**: Helmet.js security headers
@@ -80,6 +94,18 @@ controller-management-system/
 - **Error Boundaries**: Graceful error handling
 
 ## 📋 Usage Examples
+
+### Quick Testing
+```bash
+# Cross-platform controller test (recommended)
+node scripts/test-controller.js
+
+# Windows quick launcher
+scripts\test.bat
+
+# Unix/Linux/macOS launcher
+./run-tests.sh
+```
 
 ### CLI Mode
 ```bash
@@ -141,37 +167,58 @@ ws.send(JSON.stringify({
 
 ## 🧪 Testing
 
-### Core Tests
+### Safe Testing Approach
 ```bash
-node test-example.js
+# Main test script
+node scripts/test-controller.js
 ```
 
-### API Tests
-```bash
-node examples/api-client-example.js
-```
+**Features:**
+- ✅ Gets current settings before testing
+- ✅ Sets same values for safe testing
+- ✅ Restores original settings after testing
+- ✅ No permanent changes to controller
 
-### WebSocket Tests
-```bash
-node examples/websocket-client-example.js
-```
+### Test Coverage
+- ✅ **Discovery**: Network controller detection
+- ✅ **Time Operations**: Get/set controller time
+- ✅ **Server Config**: Get/set receiving server settings
+- ✅ **Protocol Validation**: BCD encoding, packet format
+- ✅ **Error Handling**: Timeout, network, parsing errors
 
 ## 🚀 Quick Start
 
-### Windows Users
-1. Double-click `start-cli.bat` for CLI mode
-2. Double-click `start-server.bat` for server mode
+### Installation
+```bash
+# Install Node.js from nodejs.org
+# Clone/download project files
+npm install
+```
 
-### Manual Start
-1. Install Node.js from nodejs.org
-2. Run `npm install` to install dependencies
-3. Start CLI: `node app.js cli`
-4. Start server: `node app.js server`
+### Testing
+```bash
+# Test with real controller
+node scripts/test-controller.js
+
+# Expected: Controller discovered and all operations tested safely
+```
+
+### Development
+```bash
+# Start CLI
+node app.js cli
+
+# Start server
+node app.js server
+
+# API docs: http://localhost:3000/docs
+```
 
 ## 📚 Documentation
 
-- **[README.md](README.md)**: Complete usage guide
+- **[README.md](../README.md)**: Complete usage guide
 - **[INSTALLATION.md](INSTALLATION.md)**: Installation instructions
+- **[TESTING_GUIDE.md](TESTING_GUIDE.md)**: Testing documentation
 - **API Docs**: Available at `/docs` when server is running
 - **Examples**: See `examples/` directory
 
@@ -191,23 +238,9 @@ node examples/websocket-client-example.js
 - **Scheduling**: Automated time synchronization
 - **Alerts**: Real-time controller status monitoring
 
-## 📞 Support
-
-### Troubleshooting
-1. Check [INSTALLATION.md](INSTALLATION.md) for setup issues
-2. Run `node test-example.js` to verify core functionality
-3. Check server health at `http://localhost:3000/health`
-4. Review console logs for error details
-
-### Common Issues
-- **Node.js not found**: Install from nodejs.org
-- **Permission errors**: Run as administrator/sudo
-- **Port conflicts**: Use different port with `-p` option
-- **Controllers not found**: Check network and firewall settings
-
 ## ✅ Project Status
 
-**Status**: ✅ **COMPLETE AND READY FOR USE**
+**Status**: ✅ **COMPLETE AND PRODUCTION-READY**
 
 All core requirements have been implemented:
 - ✅ UDP communication with 64-byte packets
@@ -217,6 +250,8 @@ All core requirements have been implemented:
 - ✅ Web service with REST API and WebSocket
 - ✅ Layered architecture as specified
 - ✅ JSON-based persistence
+- ✅ Safe testing with auto-restore
+- ✅ Cross-platform compatibility
 - ✅ Comprehensive documentation and examples
 
 The system is production-ready and fully functional according to the original specifications.
