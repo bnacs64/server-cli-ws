@@ -1,14 +1,28 @@
 const dgram = require('dgram');
+const os = require('os');
 
 /**
- * Packet Handler for Controller Communication
- * Handles UDP packet creation, parsing, and BCD encoding/decoding
+ * Enhanced Packet Handler for Controller Communication
+ * Handles UDP packet creation, parsing, BCD encoding/decoding, and cross-platform network discovery
  */
 class PacketHandler {
     constructor() {
         this.PACKET_SIZE = 64;
         this.CONTROLLER_PORT = 60000;
         this.TYPE_BYTE = 0x17;
+
+        // Discovery configuration
+        this.discoveryConfig = {
+            maxRetries: 3,
+            retryDelay: 1000,
+            exponentialBackoff: true,
+            duplicateDetectionWindow: 5000,
+            enableUnicastFallback: true,
+            enableInterfaceDetection: true
+        };
+
+        // Cache for discovered controllers to prevent duplicates
+        this.discoveryCache = new Map();
     }
 
     /**
@@ -92,6 +106,130 @@ class PacketHandler {
      */
     bytesToIp(bytes) {
         return bytes.join('.');
+    }
+
+    /**
+     * Get all network interfaces with their broadcast addresses
+     * Cross-platform implementation for Windows, macOS, and Linux
+     */
+    getNetworkInterfaces() {
+        const interfaces = os.networkInterfaces();
+        const networkInfo = [];
+
+        Object.keys(interfaces).forEach(interfaceName => {
+            const interfaceData = interfaces[interfaceName];
+
+            interfaceData.forEach(addr => {
+                // Only process IPv4 addresses that are not internal
+                if (addr.family === 'IPv4' && !addr.internal) {
+                    const networkInfo_item = {
+                        name: interfaceName,
+                        address: addr.address,
+                        netmask: addr.netmask,
+                        mac: addr.mac,
+                        broadcast: this.calculateBroadcastAddress(addr.address, addr.netmask),
+                        network: this.calculateNetworkAddress(addr.address, addr.netmask),
+                        platform: os.platform()
+                    };
+
+                    // Add platform-specific interface type detection
+                    networkInfo_item.type = this.detectInterfaceType(interfaceName);
+                    networkInfo_item.priority = this.getInterfacePriority(interfaceName, networkInfo_item.type);
+
+                    networkInfo.push(networkInfo_item);
+                }
+            });
+        });
+
+        // Sort by priority (higher priority first)
+        return networkInfo.sort((a, b) => b.priority - a.priority);
+    }
+
+    /**
+     * Calculate broadcast address from IP and netmask
+     */
+    calculateBroadcastAddress(ip, netmask) {
+        const ipParts = ip.split('.').map(Number);
+        const maskParts = netmask.split('.').map(Number);
+
+        const broadcastParts = ipParts.map((ipPart, index) => {
+            return ipPart | (255 - maskParts[index]);
+        });
+
+        return broadcastParts.join('.');
+    }
+
+    /**
+     * Calculate network address from IP and netmask
+     */
+    calculateNetworkAddress(ip, netmask) {
+        const ipParts = ip.split('.').map(Number);
+        const maskParts = netmask.split('.').map(Number);
+
+        const networkParts = ipParts.map((ipPart, index) => {
+            return ipPart & maskParts[index];
+        });
+
+        return networkParts.join('.');
+    }
+
+    /**
+     * Detect interface type based on name (cross-platform)
+     */
+    detectInterfaceType(interfaceName) {
+        const name = interfaceName.toLowerCase();
+
+        // Ethernet interfaces
+        if (name.includes('eth') || name.includes('ethernet') ||
+            name.includes('en') || name.includes('lan')) {
+            return 'ethernet';
+        }
+
+        // WiFi interfaces
+        if (name.includes('wifi') || name.includes('wlan') ||
+            name.includes('wireless') || name.includes('wi-fi')) {
+            return 'wifi';
+        }
+
+        // Virtual interfaces
+        if (name.includes('vbox') || name.includes('vmware') ||
+            name.includes('virtual') || name.includes('docker') ||
+            name.includes('bridge') || name.includes('tap') ||
+            name.includes('tun')) {
+            return 'virtual';
+        }
+
+        // Loopback
+        if (name.includes('lo') || name.includes('loopback')) {
+            return 'loopback';
+        }
+
+        return 'unknown';
+    }
+
+    /**
+     * Get interface priority for discovery (higher = better)
+     */
+    getInterfacePriority(interfaceName, type) {
+        let priority = 0;
+
+        // Base priority by type
+        switch (type) {
+            case 'ethernet': priority = 100; break;
+            case 'wifi': priority = 80; break;
+            case 'unknown': priority = 50; break;
+            case 'virtual': priority = 20; break;
+            case 'loopback': priority = 0; break;
+        }
+
+        // Boost priority for interfaces likely to be connected to controllers
+        const name = interfaceName.toLowerCase();
+        if (name.includes('ethernet') || name.includes('lan') ||
+            name.includes('eth0') || name.includes('en0')) {
+            priority += 20;
+        }
+
+        return priority;
     }
 
     /**
@@ -206,9 +344,82 @@ class PacketHandler {
     }
 
     /**
-     * Broadcast packet for discovery
+     * Enhanced broadcast packet for discovery with cross-platform network interface support
      */
     async broadcastPacket(packet, timeout = 5000) {
+        const responses = [];
+        const startTime = Date.now();
+
+        // Clear old cache entries
+        this.cleanDiscoveryCache();
+
+        try {
+            // Try enhanced discovery first
+            const enhancedResponses = await this.enhancedDiscovery(packet, timeout);
+            responses.push(...enhancedResponses);
+
+            // If no responses and unicast fallback is enabled, try known IP ranges
+            if (responses.length === 0 && this.discoveryConfig.enableUnicastFallback) {
+                const remainingTime = timeout - (Date.now() - startTime);
+                if (remainingTime > 1000) {
+                    const unicastResponses = await this.unicastDiscovery(packet, remainingTime);
+                    responses.push(...unicastResponses);
+                }
+            }
+
+            return this.deduplicateResponses(responses);
+
+        } catch (error) {
+            // Fallback to legacy discovery if enhanced discovery fails
+            console.warn('Enhanced discovery failed, falling back to legacy method:', error.message);
+            return await this.legacyBroadcastPacket(packet, timeout);
+        }
+    }
+
+    /**
+     * Enhanced discovery using network interface detection
+     */
+    async enhancedDiscovery(packet, timeout) {
+        const responses = [];
+        const networkInterfaces = this.getNetworkInterfaces();
+
+        if (networkInterfaces.length === 0) {
+            throw new Error('No suitable network interfaces found');
+        }
+
+        console.log(`Found ${networkInterfaces.length} network interface(s) for discovery`);
+
+        // Try discovery with retry mechanism
+        for (let attempt = 1; attempt <= this.discoveryConfig.maxRetries; attempt++) {
+            console.log(`Discovery attempt ${attempt}/${this.discoveryConfig.maxRetries}`);
+
+            const attemptResponses = await this.performDiscoveryAttempt(packet, networkInterfaces, timeout);
+            responses.push(...attemptResponses);
+
+            // If we found controllers, we can stop retrying
+            if (responses.length > 0) {
+                console.log(`Found ${responses.length} controller(s) on attempt ${attempt}`);
+                break;
+            }
+
+            // Wait before retry (with exponential backoff if enabled)
+            if (attempt < this.discoveryConfig.maxRetries) {
+                const delay = this.discoveryConfig.exponentialBackoff
+                    ? this.discoveryConfig.retryDelay * Math.pow(2, attempt - 1)
+                    : this.discoveryConfig.retryDelay;
+
+                console.log(`Waiting ${delay}ms before retry...`);
+                await this.sleep(delay);
+            }
+        }
+
+        return responses;
+    }
+
+    /**
+     * Perform a single discovery attempt across all network interfaces
+     */
+    async performDiscoveryAttempt(packet, networkInterfaces, timeout) {
         return new Promise((resolve, reject) => {
             const client = dgram.createSocket('udp4');
             const responses = [];
@@ -216,7 +427,154 @@ class PacketHandler {
 
             client.bind(() => {
                 client.setBroadcast(true);
-                
+
+                timeoutId = setTimeout(() => {
+                    client.close();
+                    resolve(responses);
+                }, timeout);
+
+                client.on('message', (msg, rinfo) => {
+                    try {
+                        const response = this.parsePacket(msg);
+                        const responseKey = this.generateResponseKey(response, rinfo);
+
+                        // Check for duplicates
+                        if (!this.discoveryCache.has(responseKey)) {
+                            this.discoveryCache.set(responseKey, Date.now());
+                            responses.push({ response, remoteInfo: rinfo });
+                            console.log(`Controller response from ${rinfo.address}:${rinfo.port}`);
+                        }
+                    } catch (error) {
+                        console.warn('Failed to parse response packet:', error.message);
+                    }
+                });
+
+                client.on('error', (err) => {
+                    clearTimeout(timeoutId);
+                    client.close();
+                    reject(err);
+                });
+
+                // Send to broadcast addresses for each interface
+                const broadcastAddresses = this.generateBroadcastAddresses(networkInterfaces);
+
+                console.log(`Broadcasting to ${broadcastAddresses.length} address(es): ${broadcastAddresses.join(', ')}`);
+
+                broadcastAddresses.forEach(addr => {
+                    client.send(packet, this.CONTROLLER_PORT, addr, (err) => {
+                        if (err) {
+                            console.warn(`Failed to broadcast to ${addr}:`, err.message);
+                        }
+                    });
+                });
+            });
+        });
+    }
+
+    /**
+     * Generate broadcast addresses from network interfaces
+     */
+    generateBroadcastAddresses(networkInterfaces) {
+        const addresses = new Set();
+
+        // Add interface-specific broadcast addresses
+        networkInterfaces.forEach(iface => {
+            if (iface.broadcast && iface.type !== 'loopback' && iface.type !== 'virtual') {
+                addresses.add(iface.broadcast);
+            }
+        });
+
+        // Add common broadcast addresses as fallback
+        const commonAddresses = [
+            '255.255.255.255',
+            '192.168.2.255',    // Known controller network
+            '192.168.1.255',
+            '192.168.0.255',
+            '10.0.0.255',
+            '172.16.0.255'
+        ];
+
+        commonAddresses.forEach(addr => addresses.add(addr));
+
+        return Array.from(addresses);
+    }
+
+    /**
+     * Unicast discovery to specific IP addresses when broadcast fails
+     */
+    async unicastDiscovery(packet, timeout) {
+        const responses = [];
+        const networkInterfaces = this.getNetworkInterfaces();
+        const targetIPs = this.generateUnicastTargets(networkInterfaces);
+
+        console.log(`Attempting unicast discovery to ${targetIPs.length} target(s)`);
+
+        // Try each target IP with a shorter timeout
+        const perTargetTimeout = Math.min(timeout / targetIPs.length, 2000);
+
+        for (const targetIP of targetIPs) {
+            try {
+                console.log(`Trying unicast discovery to ${targetIP}`);
+                const response = await this.sendPacket(packet, targetIP, perTargetTimeout);
+
+                if (response && response.response.functionId === 0x94) {
+                    const responseKey = this.generateResponseKey(response.response, response.remoteInfo);
+
+                    if (!this.discoveryCache.has(responseKey)) {
+                        this.discoveryCache.set(responseKey, Date.now());
+                        responses.push(response);
+                        console.log(`Unicast discovery successful: ${targetIP}`);
+                    }
+                }
+            } catch (error) {
+                // Ignore individual unicast failures
+                console.debug(`Unicast to ${targetIP} failed: ${error.message}`);
+            }
+        }
+
+        return responses;
+    }
+
+    /**
+     * Generate unicast target IPs based on network interfaces
+     */
+    generateUnicastTargets(networkInterfaces) {
+        const targets = new Set();
+
+        // Add known controller IP
+        targets.add('192.168.2.66');
+        targets.add('192.168.2.120'); // Known response IP
+
+        // Generate targets based on network interfaces
+        networkInterfaces.forEach(iface => {
+            if (iface.type === 'ethernet' || iface.type === 'wifi') {
+                const network = iface.network;
+                const networkParts = network.split('.');
+
+                // Try common controller IPs in this network
+                const commonLastOctets = [1, 2, 10, 20, 50, 66, 100, 120, 200, 254];
+                commonLastOctets.forEach(lastOctet => {
+                    const targetIP = `${networkParts[0]}.${networkParts[1]}.${networkParts[2]}.${lastOctet}`;
+                    targets.add(targetIP);
+                });
+            }
+        });
+
+        return Array.from(targets);
+    }
+
+    /**
+     * Legacy broadcast method for fallback compatibility
+     */
+    async legacyBroadcastPacket(packet, timeout = 5000) {
+        return new Promise((resolve, reject) => {
+            const client = dgram.createSocket('udp4');
+            const responses = [];
+            let timeoutId;
+
+            client.bind(() => {
+                client.setBroadcast(true);
+
                 timeoutId = setTimeout(() => {
                     client.close();
                     resolve(responses);
@@ -240,7 +598,7 @@ class PacketHandler {
                 // Broadcast to common network ranges
                 const broadcastAddresses = [
                     '255.255.255.255',
-                    '192.168.2.255',    // Added for your specific network
+                    '192.168.2.255',
                     '192.168.1.255',
                     '192.168.0.255',
                     '10.0.0.255'
@@ -255,6 +613,75 @@ class PacketHandler {
                 });
             });
         });
+    }
+
+    /**
+     * Generate unique key for response deduplication
+     */
+    generateResponseKey(response, remoteInfo) {
+        return `${response.deviceSerialNumber}-${remoteInfo.address}-${remoteInfo.port}`;
+    }
+
+    /**
+     * Remove duplicate responses based on serial number and source
+     */
+    deduplicateResponses(responses) {
+        const seen = new Set();
+        return responses.filter(({ response, remoteInfo }) => {
+            const key = this.generateResponseKey(response, remoteInfo);
+            if (seen.has(key)) {
+                return false;
+            }
+            seen.add(key);
+            return true;
+        });
+    }
+
+    /**
+     * Clean old entries from discovery cache
+     */
+    cleanDiscoveryCache() {
+        const now = Date.now();
+        const maxAge = this.discoveryConfig.duplicateDetectionWindow;
+
+        for (const [key, timestamp] of this.discoveryCache.entries()) {
+            if (now - timestamp > maxAge) {
+                this.discoveryCache.delete(key);
+            }
+        }
+    }
+
+    /**
+     * Sleep utility for retry delays
+     */
+    sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    /**
+     * Configure discovery behavior
+     */
+    setDiscoveryConfig(config) {
+        this.discoveryConfig = { ...this.discoveryConfig, ...config };
+    }
+
+    /**
+     * Get current discovery configuration
+     */
+    getDiscoveryConfig() {
+        return { ...this.discoveryConfig };
+    }
+
+    /**
+     * Get network interface information for debugging
+     */
+    getNetworkInfo() {
+        return {
+            interfaces: this.getNetworkInterfaces(),
+            platform: os.platform(),
+            hostname: os.hostname(),
+            discoveryConfig: this.discoveryConfig
+        };
     }
 }
 

@@ -19,13 +19,28 @@ class CLI {
             .description('Network-enabled hardware controller management CLI')
             .version('1.0.0');
 
-        // Discovery command
+        // Enhanced discovery command
         this.program
             .command('discover')
-            .description('Discover controllers on the network')
+            .description('Discover controllers on the network with enhanced cross-platform support')
             .option('-t, --timeout <seconds>', 'Discovery timeout in seconds', '5')
+            .option('-r, --retries <count>', 'Maximum retry attempts', '3')
+            .option('-d, --delay <ms>', 'Retry delay in milliseconds', '1000')
+            .option('--no-unicast', 'Disable unicast fallback discovery')
+            .option('--no-interfaces', 'Disable network interface detection')
+            .option('-v, --verbose', 'Enable verbose logging')
+            .option('--target <ip>', 'Target specific IP address(es) (comma-separated)')
             .action(async (options) => {
-                await this.handleDiscover(parseInt(options.timeout) * 1000);
+                await this.handleEnhancedDiscover(options);
+            });
+
+        // Network diagnostics command
+        this.program
+            .command('diagnose')
+            .description('Run network diagnostics for troubleshooting discovery issues')
+            .option('-v, --verbose', 'Enable verbose output')
+            .action(async (options) => {
+                await this.handleDiagnose(options);
             });
 
         // List command
@@ -85,11 +100,12 @@ class CLI {
     async handleDiscover(timeout) {
         try {
             console.log(`🔍 Discovering controllers (timeout: ${timeout/1000}s)...`);
-            
+
             const controllers = await this.api.discoverControllers(timeout);
-            
+
             if (controllers.length === 0) {
                 console.log('❌ No controllers found on the network.');
+                console.log('💡 Try running "diagnose" command for troubleshooting');
                 return;
             }
 
@@ -105,6 +121,138 @@ class CLI {
         } catch (error) {
             console.error('❌ Discovery failed:', error.message);
             process.exit(1);
+        }
+    }
+
+    async handleEnhancedDiscover(options) {
+        try {
+            const timeout = parseInt(options.timeout) * 1000;
+            const maxRetries = parseInt(options.retries);
+            const retryDelay = parseInt(options.delay);
+
+            if (options.target) {
+                // Targeted discovery
+                const targetIPs = options.target.split(',').map(ip => ip.trim());
+                console.log(`🎯 Discovering controllers at specific IPs: ${targetIPs.join(', ')}`);
+
+                const controllers = await this.api.discoverControllersByIP(targetIPs, timeout);
+
+                if (controllers.length === 0) {
+                    console.log('❌ No controllers found at target IPs');
+                    console.log('💡 Try running "diagnose" command for troubleshooting');
+                    return;
+                }
+
+                console.log(`✅ Found ${controllers.length} controller(s) at target IPs:`);
+                this.displayControllers(controllers, true);
+
+            } else {
+                // Enhanced discovery
+                console.log('🔍 Discovering controllers with enhanced cross-platform support...');
+
+                const discoveryOptions = {
+                    enableRetry: true,
+                    enableUnicastFallback: options.unicast !== false,
+                    enableInterfaceDetection: options.interfaces !== false,
+                    maxRetries,
+                    retryDelay,
+                    exponentialBackoff: true,
+                    logLevel: options.verbose ? 'verbose' : 'info'
+                };
+
+                if (options.verbose) {
+                    console.log('Discovery configuration:', discoveryOptions);
+                    const networkInfo = this.api.getNetworkInfo();
+                    console.log(`Platform: ${networkInfo.platform}`);
+                    console.log(`Found ${networkInfo.interfaces.length} network interface(s)`);
+                }
+
+                const controllers = await this.api.discoverControllers(timeout, discoveryOptions);
+
+                if (controllers.length === 0) {
+                    console.log('❌ No controllers found');
+                    console.log('💡 Try running "diagnose" command for troubleshooting');
+                    return;
+                }
+
+                console.log(`✅ Found ${controllers.length} controller(s):`);
+                this.displayControllers(controllers, options.verbose);
+            }
+        } catch (error) {
+            console.error('❌ Enhanced discovery failed:', error.message);
+            process.exit(1);
+        }
+    }
+
+    async handleDiagnose(options) {
+        try {
+            console.log('🔍 Running network diagnostics...');
+
+            const diagnostics = await this.api.runNetworkDiagnostics();
+
+            console.log('\n📊 Network Diagnostic Results:');
+            console.log('================================');
+            console.log(`Platform: ${diagnostics.platform}`);
+            console.log(`Hostname: ${diagnostics.hostname}`);
+            console.log(`Timestamp: ${diagnostics.timestamp}`);
+
+            console.log(`\n🌐 Network Interfaces (${diagnostics.networkInterfaces.length}):`);
+            diagnostics.networkInterfaces.forEach((iface, index) => {
+                console.log(`  ${index + 1}. ${iface.name} (${iface.type})`);
+                console.log(`     Address: ${iface.address}/${iface.netmask}`);
+                console.log(`     Network: ${iface.network}`);
+                console.log(`     Broadcast: ${iface.broadcast}`);
+                console.log(`     Priority: ${iface.priority}`);
+                if (options.verbose) {
+                    console.log(`     MAC: ${iface.mac}`);
+                }
+            });
+
+            console.log(`\n🔗 Connectivity Tests (${diagnostics.connectivityTests.length}):`);
+            diagnostics.connectivityTests.forEach(test => {
+                if (test.reachable) {
+                    console.log(`  ✅ ${test.targetIP}: Reachable (${test.responseTime}ms)`);
+                } else {
+                    console.log(`  ❌ ${test.targetIP}: ${test.error}`);
+                }
+            });
+
+            console.log(`\n💡 Recommendations (${diagnostics.recommendations.length}):`);
+            diagnostics.recommendations.forEach(rec => {
+                const icon = rec.type === 'error' ? '❌' : rec.type === 'warning' ? '⚠️' : 'ℹ️';
+                console.log(`  ${icon} ${rec.message}`);
+                console.log(`     Action: ${rec.action}`);
+            });
+
+            if (options.verbose) {
+                console.log('\n⚙️ Discovery Configuration:');
+                console.log(JSON.stringify(diagnostics.discoveryConfig, null, 2));
+            }
+
+        } catch (error) {
+            console.error('❌ Network diagnostics failed:', error.message);
+            process.exit(1);
+        }
+    }
+
+    displayControllers(controllers, verbose = false) {
+        console.table(controllers.map(c => ({
+            'Serial Number': c.serialNumber,
+            'Configured IP': c.ip,
+            'Response from': c.remoteAddress,
+            'MAC Address': c.macAddress,
+            'Driver Version': c.driverVersion,
+            'Release Date': c.driverReleaseDate
+        })));
+
+        // Show network behavior notes if verbose
+        if (verbose) {
+            controllers.forEach(controller => {
+                if (controller.ip !== controller.remoteAddress) {
+                    console.log(`ℹ️  Controller ${controller.serialNumber}: Responds from different IP (NAT/routing behavior)`);
+                    console.log(`   Configured: ${controller.ip}, Responds from: ${controller.remoteAddress}`);
+                }
+            });
         }
     }
 
