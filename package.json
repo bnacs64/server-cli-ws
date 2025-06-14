@@ -1,0 +1,39 @@
+{
+  "name": "controller-management-system",
+  "version": "1.0.0",
+  "description": "Network-enabled hardware controller management system with CLI and Web Service interfaces",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "cli": "node app.js cli",
+    "server": "node app.js server",
+    "dev": "nodemon app.js server",
+    "test": "jest"
+  },
+  "keywords": [
+    "controller",
+    "udp",
+    "hardware",
+    "management",
+    "cli",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^11.1.0",
+    "inquirer": "^9.2.12",
+    "express": "^4.18.2",
+    "ws": "^8.14.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
