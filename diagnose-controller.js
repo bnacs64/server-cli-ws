@@ -30,11 +30,19 @@ class ControllerDiagnostic {
     // Test 1: Direct UDP packet to specific IP
     async testDirectUDP() {
         this.log('Testing direct UDP communication to 192.168.2.66:60000...', 'debug');
-        
+
         return new Promise((resolve) => {
             const client = dgram.createSocket('udp4');
             const packet = this.packetHandler.createPacket(0x94, 0); // Discovery packet
             let responseReceived = false;
+
+            this.log(`Discovery packet details:`, 'debug');
+            this.log(`  Length: ${packet.length} bytes`, 'debug');
+            this.log(`  Type: 0x${packet[0].toString(16).padStart(2, '0')}`, 'debug');
+            this.log(`  Function: 0x${packet[1].toString(16).padStart(2, '0')}`, 'debug');
+            this.log(`  Reserved: 0x${packet.readUInt16LE(2).toString(16).padStart(4, '0')}`, 'debug');
+            this.log(`  Serial: 0x${packet.readUInt32LE(4).toString(16).padStart(8, '0')}`, 'debug');
+            this.log(`  Hex: ${packet.toString('hex')}`, 'debug');
 
             const timeout = setTimeout(() => {
                 if (!responseReceived) {
@@ -42,24 +50,35 @@ class ControllerDiagnostic {
                     this.log('Direct UDP test: No response (timeout)', 'error');
                     resolve(false);
                 }
-            }, 5000);
+            }, 8000); // Increased timeout
 
             client.on('message', (msg, rinfo) => {
                 if (!responseReceived) {
                     responseReceived = true;
                     clearTimeout(timeout);
                     client.close();
-                    
+
                     this.log(`Direct UDP test: Response received from ${rinfo.address}:${rinfo.port}`, 'success');
                     this.log(`Response length: ${msg.length} bytes`, 'info');
-                    
+                    this.log(`Response hex: ${msg.toString('hex')}`, 'debug');
+
                     try {
                         const parsed = this.packetHandler.parsePacket(msg);
                         this.log(`Function ID: 0x${parsed.functionId.toString(16)}`, 'info');
                         this.log(`Device Serial: ${parsed.deviceSerialNumber}`, 'info');
+
+                        // Try to parse as discovery response
+                        if (parsed.functionId === 0x94) {
+                            const controllerInfo = this.parseDiscoveryResponse(parsed, rinfo);
+                            this.log(`Controller IP: ${controllerInfo.ip}`, 'info');
+                            this.log(`Controller MAC: ${controllerInfo.macAddress}`, 'info');
+                            this.log(`Driver Version: ${controllerInfo.driverVersion}`, 'info');
+                        }
+
                         resolve(true);
                     } catch (error) {
                         this.log(`Failed to parse response: ${error.message}`, 'error');
+                        this.log(`Raw response for analysis: ${msg.toString('hex')}`, 'debug');
                         resolve(false);
                     }
                 }
@@ -85,6 +104,46 @@ class ControllerDiagnostic {
                 }
             });
         });
+    }
+
+    // Helper method to parse discovery response
+    parseDiscoveryResponse(response, remoteInfo) {
+        const data = response.data;
+
+        // Extract IP address (bytes 0-3 of data)
+        const ip = this.packetHandler.bytesToIp([data[0], data[1], data[2], data[3]]);
+
+        // Extract subnet mask (bytes 4-7 of data)
+        const subnetMask = this.packetHandler.bytesToIp([data[4], data[5], data[6], data[7]]);
+
+        // Extract gateway (bytes 8-11 of data)
+        const gateway = this.packetHandler.bytesToIp([data[8], data[9], data[10], data[11]]);
+
+        // Extract MAC address (bytes 12-17 of data)
+        const macAddress = data.slice(12, 18).map(b => b.toString(16).padStart(2, '0')).join(':');
+
+        // Extract driver version (bytes 18-19 of data, BCD format)
+        const driverVersionLow = data[18];
+        const driverVersionHigh = data[19];
+        const driverVersion = `${this.packetHandler.bcdToDecimal(driverVersionHigh)}.${this.packetHandler.bcdToDecimal(driverVersionLow)}`;
+
+        // Extract driver release date (bytes 20-23 of data, BCD format)
+        const year = this.packetHandler.bcdToDecimal(data[21]) * 100 + this.packetHandler.bcdToDecimal(data[20]);
+        const month = this.packetHandler.bcdToDecimal(data[22]);
+        const day = this.packetHandler.bcdToDecimal(data[23]);
+        const driverReleaseDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+
+        return {
+            serialNumber: response.deviceSerialNumber,
+            ip,
+            subnetMask,
+            gateway,
+            macAddress,
+            driverVersion,
+            driverReleaseDate,
+            remoteAddress: remoteInfo.address,
+            remotePort: remoteInfo.port
+        };
     }
 
     // Test 2: Broadcast discovery with detailed logging

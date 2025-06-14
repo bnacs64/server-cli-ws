@@ -64,32 +64,36 @@ class ControllerAPI {
 
     /**
      * Parse discovery response packet
+     * Based on SDK specification lines 180-207
      */
     parseDiscoveryResponse(response, remoteInfo) {
         const data = response.data;
-        
-        // Extract IP address (bytes 0-3 of data)
+
+        // Extract IP address (bytes 0-3 of data) - SDK bytes 8-11
         const ip = this.packetHandler.bytesToIp([data[0], data[1], data[2], data[3]]);
-        
-        // Extract subnet mask (bytes 4-7 of data)
+
+        // Extract subnet mask (bytes 4-7 of data) - SDK bytes 12-15
         const subnetMask = this.packetHandler.bytesToIp([data[4], data[5], data[6], data[7]]);
-        
-        // Extract gateway (bytes 8-11 of data)
+
+        // Extract gateway (bytes 8-11 of data) - SDK bytes 16-19
         const gateway = this.packetHandler.bytesToIp([data[8], data[9], data[10], data[11]]);
-        
-        // Extract MAC address (bytes 12-17 of data)
+
+        // Extract MAC address (bytes 12-17 of data) - SDK bytes 20-25
         const macAddress = data.slice(12, 18).map(b => b.toString(16).padStart(2, '0')).join(':');
-        
-        // Extract driver version (bytes 18-19 of data, BCD format)
-        const driverVersionRaw = (data[19] << 8) | data[18];
-        const driverVersion = `${this.packetHandler.bcdToDecimal(data[19])}.${this.packetHandler.bcdToDecimal(data[18])}`;
-        
-        // Extract driver release date (bytes 20-23 of data, BCD format)
+
+        // Extract driver version (bytes 18-19 of data, BCD format) - SDK bytes 26-27
+        // SDK shows 0656 for version 6.56
+        const driverVersionLow = data[18];  // Low byte
+        const driverVersionHigh = data[19]; // High byte
+        const driverVersion = `${this.packetHandler.bcdToDecimal(driverVersionHigh)}.${this.packetHandler.bcdToDecimal(driverVersionLow)}`;
+
+        // Extract driver release date (bytes 20-23 of data, BCD format) - SDK bytes 28-31
+        // SDK shows 20150429 for 2015-04-29
         const year = this.packetHandler.bcdToDecimal(data[21]) * 100 + this.packetHandler.bcdToDecimal(data[20]);
         const month = this.packetHandler.bcdToDecimal(data[22]);
         const day = this.packetHandler.bcdToDecimal(data[23]);
         const driverReleaseDate = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
-        
+
         return {
             serialNumber: response.deviceSerialNumber,
             ip,
