@@ -33,12 +33,14 @@ echo ""
 echo "Choose a test to run:"
 echo "1) Quick Test (Direct Communication) - Recommended"
 echo "2) Full Test Suite (Bash script)"
-echo "3) CLI Discovery Only"
-echo "4) Start API Server for Manual Testing"
-echo "5) Exit"
+echo "3) Diagnostic Test (Troubleshoot connection issues)"
+echo "4) Manual Interactive Test"
+echo "5) CLI Discovery Only"
+echo "6) Start API Server for Manual Testing"
+echo "7) Exit"
 echo ""
 
-read -p "Enter your choice (1-5): " choice
+read -p "Enter your choice (1-7): " choice
 
 case $choice in
     1)
@@ -58,11 +60,25 @@ case $choice in
         ;;
     3)
         echo ""
+        echo "🔍 Running diagnostic test..."
+        echo "This will help identify connection issues."
+        echo ""
+        node diagnose-controller.js
+        ;;
+    4)
+        echo ""
+        echo "🎛️  Starting manual interactive test..."
+        echo "This allows you to test different approaches manually."
+        echo ""
+        node manual-controller-test.js
+        ;;
+    5)
+        echo ""
         echo "🔍 Running discovery only..."
         echo ""
         node app.js cli discover
         ;;
-    4)
+    6)
         echo ""
         echo "🌐 Starting API server..."
         echo "Server will be available at http://localhost:3000"
@@ -71,7 +87,7 @@ case $choice in
         echo ""
         node app.js server
         ;;
-    5)
+    7)
         echo "👋 Goodbye!"
         exit 0
         ;;
