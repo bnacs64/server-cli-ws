@@ -82,13 +82,13 @@ class ControllerAPI {
         const macAddress = data.slice(12, 18).map(b => b.toString(16).padStart(2, '0')).join(':');
 
         // Extract driver version (bytes 18-19 of data, BCD format) - SDK bytes 26-27
-        // SDK shows 0656 for version 6.56
-        const driverVersionLow = data[18];  // Low byte
-        const driverVersionHigh = data[19]; // High byte
+        // SDK shows 0656 for version 6.56, stored as 0x06 0x62 (6.62 in BCD)
+        const driverVersionLow = data[18];  // Low byte (minor version)
+        const driverVersionHigh = data[19]; // High byte (major version)
         const driverVersion = `${this.packetHandler.bcdToDecimal(driverVersionHigh)}.${this.packetHandler.bcdToDecimal(driverVersionLow)}`;
 
         // Extract driver release date (bytes 20-23 of data, BCD format) - SDK bytes 28-31
-        // SDK shows 20150429 for 2015-04-29
+        // SDK shows 20150429 for 2015-04-29, stored as 0x20 0x21 0x09 0x15 for 2021-09-15
         const year = this.packetHandler.bcdToDecimal(data[21]) * 100 + this.packetHandler.bcdToDecimal(data[20]);
         const month = this.packetHandler.bcdToDecimal(data[22]);
         const day = this.packetHandler.bcdToDecimal(data[23]);
