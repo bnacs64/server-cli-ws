@@ -75,6 +75,11 @@ class ControllerAPIClient {
         return await this.makeRequest('POST', `/api/controllers/${id}/time`, data);
     }
 
+    // Get controller network configuration
+    async getControllerNetwork(id) {
+        return await this.makeRequest('GET', `/api/controllers/${id}/network`);
+    }
+
     // Set controller network configuration
     async setControllerNetwork(id, config) {
         return await this.makeRequest('POST', `/api/controllers/${id}/network`, config);
@@ -170,6 +175,19 @@ async function example() {
                 });
             } catch (error) {
                 console.log('⚠️  Could not get server config:', error.message);
+            }
+
+            // Get network configuration
+            try {
+                const networkConfig = await client.getControllerNetwork(controllerId);
+                console.log('✅ Network config:', {
+                    ip: networkConfig.data.ip,
+                    subnetMask: networkConfig.data.subnetMask,
+                    gateway: networkConfig.data.gateway,
+                    macAddress: networkConfig.data.macAddress
+                });
+            } catch (error) {
+                console.log('⚠️  Could not get network config:', error.message);
             }
 
             console.log();

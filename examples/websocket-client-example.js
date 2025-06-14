@@ -227,6 +227,18 @@ async function example() {
                 console.log('⚠️  Could not get server config:', error.message);
             }
 
+            // Get network config
+            try {
+                const networkResult = await client.executeCommand('getNetwork', controllerId);
+                console.log('✅ Network config retrieved:', {
+                    ip: networkResult.ip,
+                    subnetMask: networkResult.subnetMask,
+                    gateway: networkResult.gateway
+                });
+            } catch (error) {
+                console.log('⚠️  Could not get network config:', error.message);
+            }
+
             console.log();
         }
 

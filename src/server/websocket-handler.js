@@ -161,6 +161,15 @@ class WebSocketHandler {
                 result = await this.api.getReceivingServer(controller);
                 break;
 
+            case 'getNetwork':
+                result = {
+                    ip: controller.ip,
+                    subnetMask: controller.subnetMask,
+                    gateway: controller.gateway,
+                    macAddress: controller.macAddress
+                };
+                break;
+
             case 'setServer':
                 const { serverIp, port, uploadInterval = 0 } = data;
                 if (!serverIp || !port) {

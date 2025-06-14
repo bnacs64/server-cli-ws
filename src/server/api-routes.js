@@ -36,6 +36,7 @@ class APIRoutes {
         this.router.post('/controllers/:id/time', this.setControllerTime.bind(this));
 
         // Network configuration
+        this.router.get('/controllers/:id/network', this.getControllerNetwork.bind(this));
         this.router.post('/controllers/:id/network', this.setControllerNetwork.bind(this));
 
         // Server configuration
@@ -245,6 +246,39 @@ class APIRoutes {
             res.json({
                 success: true,
                 ...result,
+                timestamp: new Date().toISOString()
+            });
+        } catch (error) {
+            res.status(500).json({
+                success: false,
+                error: error.message,
+                timestamp: new Date().toISOString()
+            });
+        }
+    }
+
+    // GET /api/controllers/:id/network - Get controller network configuration
+    async getControllerNetwork(req, res) {
+        try {
+            const serialNumber = parseInt(req.params.id);
+            const controller = await this.api.getControllerBySerial(serialNumber);
+
+            if (!controller) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'Controller not found',
+                    timestamp: new Date().toISOString()
+                });
+            }
+
+            res.json({
+                success: true,
+                data: {
+                    ip: controller.ip,
+                    subnetMask: controller.subnetMask,
+                    gateway: controller.gateway,
+                    macAddress: controller.macAddress
+                },
                 timestamp: new Date().toISOString()
             });
         } catch (error) {

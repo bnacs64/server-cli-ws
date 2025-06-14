@@ -186,6 +186,7 @@ The server provides:
   ```
 
 #### Network Configuration
+- `GET /api/controllers/:id/network` - Get network config
 - `POST /api/controllers/:id/network` - Set network config
   ```json
   {
@@ -239,6 +240,7 @@ Connect to `ws://localhost:3000` and send JSON messages:
 - `setTime` - Set controller time
 - `getServer` - Get server configuration
 - `setServer` - Set server configuration
+- `getNetwork` - Get network configuration
 - `setNetwork` - Set network configuration
 - `getControllers` - Get all controllers
 
